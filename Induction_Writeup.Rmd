@@ -1,0 +1,618 @@
+---
+title: "Triad Polysemy Induction Tasks"
+author: "Hugh Rabagliati"
+date: "5 July 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(cache=TRUE)
+library(knitr)
+library(papeR)
+library(skewt)
+library(fitdistrplus)
+library(gamlss)
+library(gamlss.dist)
+library(lme4)
+library(ez)
+library(jsonlite)
+library(ggplot2)
+library(gridExtra)
+library(plyr)
+library(dplyr)
+library(doBy)
+library(sn)
+library(bootstrap)
+
+```
+#### Introduction
+1. A key debate in developmental psych concerns the role of labels in how children learn and use categories. 
+
+2. Give v brief rundown of broader evidence eg waxman
+
+3. But Perhaps the most well articulated debate is gelman sloutsky. Two line summary
+
+4. The assumption behind these debates is that children use labels as these are robust category markers, eg for statistical or conceptual reasons. 
+
+5. But that's not quite right: Labels are not robust category markers, in that almost all labels are used to refer to multiple different categories. We call this phenomenon lexical flexibility
+
+6. Here we investigate what the presence of lex flex means for the role of labels in how children reason about concepts and categories.
+
+#### Gelman Sloutsky debate
+1. Broader overview and history of gelman sloutsky debate. Perhaps end with final experiment in Sloutsky Fisher JECP, where they show that even phonological similarity between words can affect children's induction, and that the size of this effect is not mediated by similarity of the two concepts under comparison. 
+
+2. What do these theories say about lex flex?
+Gelman - labels are category markers. To the degree that a labels meaning can be discerned, there shouldn't be a problem, as reasoning is done based on kinds, not labels.
+Sloutsky - labels contribute to similarity. Overlapping labels should contribute to similarity judgments and thereby cause children to "hallucinate" that distinct kinds are the same.
+
+####Experiment 1
+This vs chicken experiment. We compare label (this chicken, this chicken) with no label (this one, this one).
+
+```{r expt2_import, include=FALSE}
+library(Hmisc)
+library(ggplot2)
+library(doBy)
+library(lme4)
+library(plyr)
+# From Mike Frank
+theta <- function(x,xdata,na.rm=T) {mean(xdata[x],na.rm=na.rm)}
+ci.low <- function(x,na.rm=T) {
+  mean(x,na.rm=na.rm) - quantile(bootstrap(1:length(x),1000,theta,x,na.rm=na.rm)$thetastar,.025,na.rm=na.rm)}
+ci.high <- function(x,na.rm=T) {
+  quantile(bootstrap(1:length(x),1000,theta,x,na.rm=na.rm)$thetastar,.975,na.rm=na.rm) - mean(x,na.rm=na.rm)}
+
+Child.e = read.csv("./Data/Expt A/Gelman_Expt2_Data_Edinburgh.csv", header = T)
+Child.e$Loc <- "Edin"
+Child.b = read.csv("./Data/Expt A/Gelman_Expt2_Data_Ber.csv", header = T)
+Child.b$Loc <- "Ber"
+Child.e4b = read.csv("./Data/Expt A/Gelman_Expt2_Data_Ed_For_Ber.csv",header = T)
+Child.e4b$Loc <- "EdForBer"
+Child <- rbind(Child.e,Child.b, Child.e4b)
+print(paste("Total kids with exclusions= ", length(unique(Child$ID))))
+print(paste("Total kids with exclusions= ", length(unique(subset(Child, !exclude %in% c("yes"))$ID))))
+print(setdiff(unique(Child$ID), unique(subset(Child, !exclude %in% c("yes"))$ID)))
+
+Child <- subset(Child, trial.type == "critical" & !exclude %in% c("yes"))
+Child$Choice <- ifelse(Child$superordinate.match ==1,0, ifelse(Child$superordinate.match == 0,1,NA))
+
+Child$Meaning <- ifelse(Child$concept.type == "Non-Polysemous","Unambiguous (Same Kind)","Flexible (Thematic Relation)")
+Child$Meaning <- ordered(Child$Meaning, levels = c("Unambiguous (Same Kind)","Flexible (Thematic Relation)") )
+Child$Label <- ifelse(Child$label == "no","No Label", "Shared Label")
+Child$Label <- ordered(Child$Label, levels = c("Shared Label","No Label") )
+Child$Pop <- "Child"
+summaryBy(Choice ~ age + Meaning + Label, data = subset(Child, trial.type == "critical"),na.rm=T)
+
+
+Adult.e = read.csv("./Data/Expt A/Gelman_Expt2_Data_Ed_Adult.csv", header = T)
+Adult.e$Loc <- "Edin"
+Adult.b = read.csv("./Data/Expt A/Gelman_Expt2_Data_Ber_Adult.csv", header = T)
+Adult.b$Loc <- "Ber"
+Adult <- rbind(Adult.b, Adult.e)
+Adult <- subset(Adult, trial.type == "critical" &  !exclude %in% c("yes"))
+Adult$Choice <- ifelse(Adult$superordinate.match ==1,0, ifelse(Adult$superordinate.match == 0,1,NA))
+Adult$Pop <- "Adult"
+Adult$Pop <- "Adult"
+Adult$Meaning <- ifelse(Adult$concept.type == "Non-Polysemous","Unambiguous (Same Kind)","Flexible (Thematic Relation)")
+Adult$Meaning <- ordered(Adult$Meaning, levels = c("Unambiguous (Same Kind)","Flexible (Thematic Relation)") )
+Adult$Label <- ifelse(Adult$label == "no","No Label", "Shared Label")
+Adult$Label <- ordered(Adult$Label, levels = c("Shared Label","No Label") )
+summaryBy(Choice ~ Meaning + Label, data = subset(Adult, trial.type == "critical"),na.rm=T)
+```
+
+##### Adults
+```{r expt2_adult_graphs, echo=FALSE}
+print(paste("Unambig", length(unique(subset(Adult, Meaning == "Unambiguous (Same Kind)")$ID))))
+print(paste("Ambig", length(unique(subset(Adult, Meaning != "Unambiguous (Same Kind)")$ID))))
+Adult.means <- summaryBy(Choice~ Meaning + Label, data=Adult, na.rm = T, FUN = c(mean,sd))
+Adult.means$SE <- Adult.means$Choice.sd/sqrt(length(unique(Adult$ID))/2)
+
+avg.plot<- ggplot(Adult.means, aes(Meaning, Choice.mean, fill = Label)) + 
+ stat_summary(fun.y="mean", geom="bar", position = "dodge")
+#add error bars
+avg.plot+geom_errorbar(aes(ymax=Adult.means$Choice.mean+Adult.means$SE, ymin=Adult.means$Choice.mean-Adult.means$SE), position=position_dodge(.9), width = 0)+theme_bw()+ylab("Proportion adults choosing related item")+ylim(c(-0.05,1))+ geom_hline(yintercept = 0.5, colour = "black",lty = 3)+xlab("")
+
+
+Adult.means <- summaryBy(Choice~ triad.type+Meaning + Label , data=Adult, na.rm = T, FUN = c(mean,sd))
+Adult.means$SE <- Adult.means$Choice.sd/sqrt(length(unique(Adult$ID))/2)
+
+avg.plot<- ggplot(Adult.means, aes(Meaning, Choice.mean, fill = Label)) + 
+ stat_summary(fun.y="mean", geom="bar", position = "dodge")
+#add error bars
+avg.plot+geom_errorbar(aes(ymax=Adult.means$Choice.mean+Adult.means$SE, ymin=Adult.means$Choice.mean-Adult.means$SE), position=position_dodge(.9), width = 0)+theme_bw()+ylab("Proportion adults choosing related item")+ylim(c(-0.05,1.05))+ geom_hline(yintercept = 0.5, colour = "black",lty = 3)+xlab("")+facet_grid(.~triad.type)+ scale_x_discrete(breaks=levels(Adult.means$Meaning),
+                      labels=c("Unambiguous", "Flexible"))
+```
+
+Label * Meaning mixed effects model, followed by t-tests against chance for each condition.
+```{r expt2_adult_analysis, echo=FALSE}
+print(paste("adult female = ", length(unique(subset(Adult, gender == "F")$ID))))
+child.descripts <- summaryBy(age.months ~ age+ID, data = Adult, keep.names = T)
+print(summaryBy(age ~ 1, data = child.descripts, FUN = c(mean,range)))
+
+
+kable(summary(glmer(Choice~Label*Meaning + (1+Label|ID) + (1|triad.type) , data = Adult, family = "binomial"))$coefficients, digits = 2)
+# Tests against Chance
+summaryBy(Choice ~ ID + Meaning + Label, data = Adult, keep.names = T,na.rm=T) -> Adult.Sum
+t.test(subset(Adult.Sum, Meaning == "Unambiguous (Same Kind)" & Label == "Shared Label")$Choice, mu = 0.5)
+t.test(subset(Adult.Sum, Meaning == "Unambiguous (Same Kind)" & Label == "No Label")$Choice, mu = 0.5)
+t.test(subset(Adult.Sum, Meaning == "Flexible (Thematic Relation)" & Label == "Shared Label")$Choice, mu = 0.5)
+t.test(subset(Adult.Sum, Meaning == "Flexible (Thematic Relation)" & Label == "No Label")$Choice, mu = 0.5)
+
+```
+
+##### Children
+```{r expt2_child_graphs, echo=FALSE}
+print(paste("Unambig 3 yrs", length(unique(subset(Child, age == "3" & Meaning == "Unambiguous (Same Kind)")$ID))))
+print(paste("Unambig 4 yrs", length(unique(subset(Child, age == "4" & Meaning == "Unambiguous (Same Kind)")$ID))))
+print(paste("Ambig 3 yrs", length(unique(subset(Child, age == "3" & Meaning != "Unambiguous (Same Kind)")$ID))))
+print(paste("Ambig 4 yrs", length(unique(subset(Child, age == "4" & Meaning != "Unambiguous (Same Kind)")$ID))))
+print(paste("3 yrs girls = ", length(unique(subset(Child, age == "3" & gender == "F")$ID))))
+print(paste("4 yrs girls = ", length(unique(subset(Child, age == "4" & gender == "F")$ID))))
+Child$age.months <- as.numeric(Child$age.months)
+child.descripts <- summaryBy(age.months ~ age+ID, data = Child, keep.names = T)
+print(summaryBy(age.months ~ age, data = child.descripts, FUN = c(mean,range)))
+
+Child.means <- summaryBy(Choice~ Meaning + Label, data=Child, na.rm = T, FUN = c(mean,sd))
+Child.means$SE <- Child.means$Choice.sd/sqrt(length(unique(Child$ID))/2)
+
+avg.plot<- ggplot(Child.means, aes(Meaning, Choice.mean, fill = Label)) + 
+ stat_summary(fun.y="mean", geom="bar", position = "dodge")
+#add error bars
+avg.plot+geom_errorbar(aes(ymax=Child.means$Choice.mean+Child.means$SE, ymin=Child.means$Choice.mean-Child.means$SE), position=position_dodge(.9), width = 0)+theme_bw()+ylab("Proportion children choosing related item")+ylim(c(0,1))+ geom_hline(yintercept = 0.5, colour = "black",lty = 3)+xlab("")
+
+
+Child.means <- summaryBy(Choice~ triad.type+Meaning + Label , data=Child, na.rm = T, FUN = c(mean,sd))
+Child.means$SE <- Child.means$Choice.sd/sqrt(length(unique(Child$ID))/2)
+
+avg.plot<- ggplot(Child.means, aes(Meaning, Choice.mean, fill = Label)) + 
+ stat_summary(fun.y="mean", geom="bar", position = "dodge")
+#add error bars
+avg.plot+geom_errorbar(aes(ymax=Child.means$Choice.mean+Child.means$SE, ymin=Child.means$Choice.mean-Child.means$SE), position=position_dodge(.9), width = 0)+theme_bw()+ylab("Proportion children choosing related item")+ylim(c(0,1))+ geom_hline(yintercept = 0.5, colour = "black",lty = 3)+xlab("")+facet_grid(.~triad.type)+ scale_x_discrete(breaks=levels(Child.means$Meaning),
+                      labels=c("Unambiguous", "Flexible"))
+```
+
+Label * Meaning mixed effects model, followed by t-tests against chance for each condition.
+```{r expt2_child_analysis, echo=FALSE}
+kable(summary(glmer(Choice~Label*Meaning + (1+Label|ID) + (1|triad.type), data = Child, family = "binomial"))$coefficients, digits = 2)
+
+kable(summary(glmer(Choice~Label + (1+Label|ID) + (1|triad.type), data = subset(Child, Meaning == "Unambiguous (Same Kind)"), family = "binomial"))$coefficients, digits = 2)
+kable(summary(glmer(Choice~Label + (1+Label|ID) + (1|triad.type), data = subset(Child, Meaning == "Flexible (Thematic Relation)"), family = "binomial"))$coefficients, digits = 2)
+
+# Tests against Chance
+summaryBy(Choice ~ ID + Meaning + Label, data = Child, keep.names = T) -> Child.Sum
+t.test(subset(Child.Sum, Meaning == "Unambiguous (Same Kind)" & Label == "Shared Label")$Choice, mu = 0.5)
+t.test(subset(Child.Sum, Meaning == "Unambiguous (Same Kind)" & Label == "No Label")$Choice, mu = 0.5)
+t.test(subset(Child.Sum, Meaning == "Flexible (Thematic Relation)" & Label == "Shared Label")$Choice, mu = 0.5)
+t.test(subset(Child.Sum, Meaning == "Flexible (Thematic Relation)" & Label == "No Label")$Choice, mu = 0.5)
+
+
+full_data.adult <- summaryBy(Choice~ ID + triad.type+Pop+Meaning + Label, data=Adult, na.rm = T, FUN = c(mean), keep.names = TRUE)
+full_data.child <- summaryBy(Choice~ ID + triad.type+Pop+Meaning + Label, data=Child, na.rm = T, FUN = c(mean), keep.names = TRUE)
+full_data <- rbind(full_data.adult,full_data.child)
+full_data$graph_meaning = "Same Sense"
+full_data[full_data$Meaning == "Flexible (Thematic Relation)",]$graph_meaning <- "Different Sense"
+full_data$graph_meaning = ordered(full_data$graph_meaning, levels = c("Same Sense","Different Sense"))
+full_data$Pop <- ordered(full_data$Pop, levels=c("Child","Adult"))
+
+full_data.pop <- summaryBy(Choice~ ID + Pop+graph_meaning + Label, data=full_data, na.rm = T, FUN = c(mean), keep.names = TRUE)
+full_data.means <- summaryBy(Choice~ Pop+graph_meaning + Label, data=full_data.pop, na.rm = T, FUN = c(mean,ci.low,ci.high))
+
+avg.plot<- ggplot(full_data.means, aes(graph_meaning, Choice.mean, fill = Label)) + 
+ stat_summary(fun.y="mean", geom="bar", position = "dodge")+facet_wrap(~Pop)+ylim(c(0,1))
+#add error bars
+avg.plot+geom_errorbar(aes(ymax=
+                             full_data.means$Choice.mean+full_data.means$Choice.ci.high,
+                           ymin=full_data.means$Choice.mean - full_data.means$Choice.ci.low),
+                           position=position_dodge(.9), width = 0)+theme_bw()+ylab("Proportion participants choosing related item")+ geom_hline(yintercept = 0.5, colour = "black",lty = 3)+xlab("")
+
+ 
+ full_data.means <- summaryBy(Choice~ triad.type+Pop+ID+graph_meaning + Label , data=full_data, na.rm = T, FUN = c(mean,sd))
+
+full_data.pop.triad <- summaryBy(Choice~ ID + Pop+triad.type+graph_meaning + Label, data=full_data, na.rm = T, FUN = c(mean), keep.names = TRUE)
+full_data.means.triad <- summaryBy(Choice~ Pop+triad.type+graph_meaning + Label, data=full_data.pop.triad, na.rm = T, FUN = c(mean,ci.low,ci.high))
+# 
+ avg.plot2<- ggplot(full_data.means.triad, aes(graph_meaning, Choice.mean, fill = Label)) + 
+  stat_summary(fun.y="mean", geom="bar", position = "dodge")+geom_errorbar(aes(ymax=
+                             full_data.means.triad$Choice.mean+full_data.means.triad$Choice.ci.high,
+                           ymin=full_data.means.triad$Choice.mean - full_data.means.triad$Choice.ci.low), position=position_dodge(.9), width = 0)+theme_bw()+ylab("Proportion participants choosing related item")+ylim(c(0,1))+ geom_hline(yintercept = 0.5, colour = "black",lty = 3)+xlab("")+facet_grid(Pop~triad.type)+ scale_x_discrete(breaks=levels(full_data.means.triad$graph_meaning),
+                       labels=c("Same \nSense", "Diff. \nSense"))
+avg.plot2
+```
+
+#### Discussion
+Potentially evidence for Sloutsky account
+
+But one surprising result:
+Adults go with label on lex flex condition. Why?
+
+Pragmatic account? Why would they use distinct labels if they did not want us to use them?
+
+
+
+### Experiment 2:
+Always use labels, but vary if they are shared or synonyms.
+By sloutsky fisher JECP, should still get effect.
+
+Here, we compare inferences from e.g., Chicken Animal to Duck, and either another Chicken Animal or Chicken Meat. We also vary whether the same label is used twice (both pictures called chicken) or whether a synonym is used (one called chicken, one called drumsticks).
+```{r import_Expt1, include=FALSE}
+Child = read.csv("./Data/Expt B/ChildData_Final.csv", header = T)
+contrasts(Child$LabelType)[1] <- -1
+contrasts(Child$WordType)[1] <- -1
+#Child$WordType <- revalue(Child$WordType, c("Unambiguous" = "Same Kind", "Polysemous" = "Polysemous"))
+Child$LabelType <- factor(Child$LabelType, levels(Child$LabelType)[c(2,1)])
+Child$WordType <- factor(Child$WordType, levels(Child$WordType)[c(2,1)])
+
+Child <- subset(Child, trial.type == "Critical")
+Child <- subset(Child, Exclude == "No")
+
+Child$AgeGroup <- "Three"
+Child[Child$Age == 4,]$AgeGroup <- "Four"
+Child <- Child[!Child$Age > 4 & Child$Location!="LAB",]
+Child$AgeGroup <- ordered(Child$AgeGroup, levels = c("Three","Four"))
+Child$AgeMoSt <- (Child$Age.Months - mean(Child$Age.Months))/sd(Child$Age.Months)
+Child$Age <- as.factor(Child$Age)
+Child$Loc <- "Ber"
+Child[Child$Location == "Edinburgh ",]$Loc <- "Edin"
+Child$Loc <- as.factor(Child$Loc)
+contrasts(Child$Expln)[1] <- -1
+contrasts(Child$Loc)[1] <- -1
+contrasts(Child$Age)[1] <- -1
+contrasts(Child$LabelType)[1] <- -1
+contrasts(Child$WordType)[1] <- -1
+Child$Choice <- ifelse(Child$UnrelatedChoice == 1, 0, ifelse(Child$UnrelatedChoice == 0,1,NA))
+Child$Pop <- "Child"
+Child$Meaning <- ifelse(Child$WordType == "Polysemous","Flexible (Thematic Relation)", "Unambiguous (Same Kind)")
+Child$Meaning <- ordered(Child$Meaning, levels = c("Unambiguous (Same Kind)","Flexible (Thematic Relation)") )
+Child$Label <- ifelse(Child$LabelType == "Same","Shared", "Different")
+Child$Label <- ordered(Child$Label, levels = c("Shared","Different") )
+
+Adult = read.csv("./Data/Expt B/AdultData_Final.csv", header = T)
+contrasts(Adult$LabelType)[1] <- -1
+contrasts(Adult$WordType)[1] <- -1
+Adult$WordType <- revalue(Adult$WordType, c("Unambiguous" = "Non-Polysemous", "Polysemous" = "Polysemous"))
+Adult$LabelType <- factor(Adult$LabelType, levels(Adult$LabelType)[c(2,1)])
+Adult$WordType <- factor(Adult$WordType, levels(Adult$WordType)[c(2,1)])
+
+
+Adult$Choice <- ifelse(Adult$UnrelatedChoice == 1, 0, ifelse(Adult$UnrelatedChoice == 0,1,NA))
+Adult$Meaning <- ifelse(Adult$WordType == "Polysemous","Flexible (Thematic Relation)", "Unambiguous (Same Kind)")
+Adult$Meaning <- ordered(Adult$Meaning, levels = c("Unambiguous (Same Kind)","Flexible (Thematic Relation)") )
+Adult$Label <- ifelse(Adult$LabelType == "Same","Shared", "Different")
+Adult$Label <- ordered(Adult$Label, levels = c("Shared","Different") )
+Adult$Pop <- "Adult"
+```
+
+### Adults
+
+
+```{r expt1_adult_graphs, echo=FALSE}
+
+Adult.means <- summaryBy(Choice~ Meaning + Label, data=Adult, na.rm = T, FUN = c(mean,sd))
+Adult.means$SE <- Adult.means$Choice.sd/sqrt(length(unique(Adult$SubjNo))/2)
+
+avg.plot<- ggplot(Adult.means, aes(Meaning, Choice.mean, fill = Label)) + 
+ stat_summary(fun.y="mean", geom="bar", position = "dodge")
+#add error bars
+avg.plot+geom_errorbar(aes(ymax=Adult.means$Choice.mean+Adult.means$SE, ymin=Adult.means$Choice.mean-Adult.means$SE), position=position_dodge(.9), width = 0)+theme_bw()+ylab("Proportion adults choosing related item")+ylim(c(0,1))+ geom_hline(yintercept = 0.5, colour = "black",lty = 3)+xlab("")
+
+
+Adult.means <- summaryBy(Choice~ TriadType+Meaning + Label , data=Adult, na.rm = T, FUN = c(mean,sd))
+Adult.means$SE <- Adult.means$Choice.sd/sqrt(length(unique(Adult$SubjNo))/2)
+
+avg.plot<- ggplot(Adult.means, aes(Meaning, Choice.mean, fill = Label)) + 
+ stat_summary(fun.y="mean", geom="bar", position = "dodge")
+#add error bars
+avg.plot+geom_errorbar(aes(ymax=Adult.means$Choice.mean+Adult.means$SE, ymin=Adult.means$Choice.mean-Adult.means$SE), position=position_dodge(.9), width = 0)+theme_bw()+ylab("Proportion adults choosing related item")+ylim(c(-0.05,1.05))+ geom_hline(yintercept = 0.5, colour = "black",lty = 3)+xlab("")+facet_grid(.~TriadType)+ scale_x_discrete(breaks=levels(Adult.means$Meaning),
+                      labels=c("Unambiguous", "Flexible"))
+```
+
+Label * Meaning mixed effects model, followed by t-tests against chance for each condition.
+```{r expt1_adult_analysis, echo=FALSE}
+print(paste("Unambig", length(unique(subset(Adult, Meaning == "Unambiguous (Same Kind)")$SubjNo))))
+print(paste("Ambig", length(unique(subset(Adult, Meaning != "Unambiguous (Same Kind)")$SubjNo))))
+
+kable(summary(glmer(Choice~WordType*LabelType + (1+LabelType|SubjNo) + (1|TriadType), data = Adult, family = "binomial"))$coefficients, digits = 2)
+
+# remove effect of TriadType to aide convergence
+kable(summary(glmer(Choice~LabelType + (1+LabelType|SubjNo) , data = subset(Adult, Meaning == "Unambiguous (Same Kind)"), family = "binomial"))$coefficients, digits = 2)
+
+kable(summary(glmer(Choice~LabelType + (1+LabelType|SubjNo) + (1|TriadType), data = subset(Adult, Meaning != "Unambiguous (Same Kind)"), family = "binomial"))$coefficients, digits = 2)
+
+
+summaryBy(Choice ~ SubjNo + WordType + LabelType, data = Adult, keep.names = T) -> Adult.Sum
+t.test(subset(Adult.Sum, WordType == "Non-Polysemous" & LabelType == "Same")$Choice, mu = 0.5)
+t.test(subset(Adult.Sum, WordType == "Non-Polysemous" & LabelType == "Different")$Choice, mu = 0.5)
+t.test(subset(Adult.Sum, WordType == "Polysemous" & LabelType == "Different")$Choice, mu = 0.5)
+t.test(subset(Adult.Sum, WordType == "Polysemous" & LabelType == "Same")$Choice, mu = 0.5)
+
+```
+
+### Children
+
+```{r expt1_child_graphs, echo=FALSE}
+print(paste("Unambig 3 yrs", length(unique(subset(Child, Age == "3" & Meaning == "Unambiguous (Same Kind)")$SubjNo))))
+print(paste("Unambig 4 yrs", length(unique(subset(Child, Age == "4" & Meaning == "Unambiguous (Same Kind)")$SubjNo))))
+print(paste("Ambig 3 yrs", length(unique(subset(Child, Age == "3" & Meaning != "Unambiguous (Same Kind)")$SubjNo))))
+print(paste("Ambig 4 yrs", length(unique(subset(Child, Age == "4" & Meaning != "Unambiguous (Same Kind)")$SubjNo))))
+print(paste("3 yrs girls = ", length(unique(subset(Child, Age == "3" & gender == "F")$SubjNo))))
+print(paste("4 yrs girls = ", length(unique(subset(Child, Age == "4" & gender == "F")$SubjNo))))
+Child$Age.Months <- as.numeric(Child$Age.Months)
+child.descripts <- summaryBy(Age.Months ~ Age+SubjNo, data = Child, keep.names = T)
+print(summaryBy(Age.Months ~ Age, data = child.descripts, FUN = c(mean,range)))
+
+Child.means <- summaryBy(Choice~ Meaning + Label, data=Child, na.rm = T, FUN = c(mean,sd))
+Child.means$SE <- Child.means$Choice.sd/sqrt(length(unique(Child$SubjNo))/2)
+
+avg.plot<- ggplot(Child.means, aes(Meaning, Choice.mean, fill = Label)) + 
+ stat_summary(fun.y="mean", geom="bar", position = "dodge")
+#add error bars
+avg.plot+geom_errorbar(aes(ymax=Child.means$Choice.mean+Child.means$SE, ymin=Child.means$Choice.mean-Child.means$SE), position=position_dodge(.9), width = 0)+theme_bw()+ylab("Proportion children choosing related item")+ylim(c(0,0.75))+ geom_hline(yintercept = 0.5, colour = "black",lty = 3)+xlab("")
+
+
+Child.means <- summaryBy(Choice~ TriadType+Meaning + Label , data=Child, na.rm = T, FUN = c(mean,sd))
+Child.means$SE <- Child.means$Choice.sd/sqrt(length(unique(Child$SubjNo))/2)
+
+avg.plot<- ggplot(Child.means, aes(Meaning, Choice.mean, fill = Label)) + 
+ stat_summary(fun.y="mean", geom="bar", position = "dodge")
+#add error bars
+avg.plot+geom_errorbar(aes(ymax=Child.means$Choice.mean+Child.means$SE, ymin=Child.means$Choice.mean-Child.means$SE), position=position_dodge(.9), width = 0)+theme_bw()+ylab("Proportion children choosing related item")+ylim(c(0,0.75))+ geom_hline(yintercept = 0.5, colour = "black",lty = 3)+xlab("")+facet_grid(.~TriadType)+ scale_x_discrete(breaks=levels(Child.means$Meaning),
+                      labels=c("Unambiguous", "Flexible"))
+
+
+
+full_data.adult <- summaryBy(Choice~ SubjNo + TriadType+Pop+Meaning + Label, data=Adult, na.rm = T, FUN = c(mean), keep.names = TRUE)
+full_data.child <- summaryBy(Choice~ SubjNo + TriadType+Pop+Meaning + Label, data=Child, na.rm = T, FUN = c(mean), keep.names = TRUE)
+full_data <- rbind(full_data.adult,full_data.child)
+full_data$graph_meaning = "Same Sense"
+full_data[full_data$Meaning == "Flexible (Thematic Relation)",]$graph_meaning <- "Different Sense"
+full_data$graph_meaning = ordered(full_data$graph_meaning, levels = c("Same Sense","Different Sense"))
+full_data$Pop <- ordered(full_data$Pop, levels=c("Child","Adult"))
+
+full_data.pop <- summaryBy(Choice~ SubjNo + Pop+graph_meaning + Label, data=full_data, na.rm = T, FUN = c(mean), keep.names = TRUE)
+full_data.means <- summaryBy(Choice~ Pop+graph_meaning + Label, data=full_data.pop, na.rm = T, FUN = c(mean,ci.low,ci.high))
+
+avg.plot<- ggplot(full_data.means, aes(graph_meaning, Choice.mean, fill = Label)) + 
+ stat_summary(fun.y="mean", geom="bar", position = "dodge")+facet_wrap(~Pop)+ylim(c(0,1))
+#add error bars
+avg.plot+geom_errorbar(aes(ymax=
+                             full_data.means$Choice.mean+full_data.means$Choice.ci.high,
+                           ymin=full_data.means$Choice.mean - full_data.means$Choice.ci.low),
+                           position=position_dodge(.9), width = 0)+theme_bw()+ylab("Proportion participants choosing related item")+ geom_hline(yintercept = 0.5, colour = "black",lty = 3)+xlab("")
+
+ 
+ full_data.means <- summaryBy(Choice~ TriadType+Pop+SubjNo+graph_meaning + Label , data=full_data, na.rm = T, FUN = c(mean,sd))
+
+full_data.pop.triad <- summaryBy(Choice~ SubjNo + Pop+TriadType+graph_meaning + Label, data=full_data, na.rm = T, FUN = c(mean), keep.names = TRUE)
+full_data.means.triad <- summaryBy(Choice~ Pop+TriadType+graph_meaning + Label, data=full_data.pop.triad, na.rm = T, FUN = c(mean,ci.low,ci.high))
+# 
+ avg.plot2<- ggplot(full_data.means.triad, aes(graph_meaning, Choice.mean, fill = Label)) + 
+  stat_summary(fun.y="mean", geom="bar", position = "dodge")+geom_errorbar(aes(ymax=
+                             full_data.means.triad$Choice.mean+full_data.means.triad$Choice.ci.high,
+                           ymin=full_data.means.triad$Choice.mean - full_data.means.triad$Choice.ci.low), position=position_dodge(.9), width = 0)+theme_bw()+ylab("Proportion participants choosing related item")+ylim(c(0,1))+ geom_hline(yintercept = 0.5, colour = "black",lty = 3)+xlab("")+facet_grid(Pop~TriadType)+ scale_x_discrete(breaks=levels(full_data.means.triad$graph_meaning),
+                       labels=c("Same \nSense", "Diff. \nSense"))
+avg.plot2
+```
+
+Label * Meaning mixed effects model, followed by t-tests against chance for each condition.
+```{r expt1_child_analysis, echo=FALSE}
+
+kable(summary(glmer(Choice~Meaning*LabelType + (1+LabelType|SubjNo) + (1+Meaning|TriadType), data = Child, family = "binomial"))$coefficients, digits = 2)
+
+kable(summary(glmer(Choice~LabelType + (1+LabelType|SubjNo) + (1|TriadType), data = subset(Child, Meaning == "Unambiguous (Same Kind)"), family = "binomial"))$coefficients, digits = 2)
+
+kable(summary(glmer(Choice~LabelType + (1+LabelType|SubjNo) + (1|TriadType), data = subset(Child, Meaning != "Unambiguous (Same Kind)"), family = "binomial"))$coefficients, digits = 2)
+                
+summaryBy(Choice ~ SubjNo + WordType + LabelType, data = Child, keep.names = T) -> Child.Sum
+t.test(subset(Child.Sum, WordType == "Non-Polysemous" & LabelType == "Same")$Choice, mu = 0.5)
+t.test(subset(Child.Sum, WordType == "Non-Polysemous" & LabelType == "Different")$Choice, mu = 0.5)
+t.test(subset(Child.Sum, WordType == "Polysemous" & LabelType == "Different")$Choice, mu = 0.5)
+t.test(subset(Child.Sum, WordType == "Polysemous" & LabelType == "Same")$Choice, mu = 0.5)
+
+```
+
+## Comparison of Experiments 1 and 2
+```{r import_both_expts, include = FALSE}
+library(Hmisc)
+library(ggplot2)
+library(doBy)
+library(lme4)
+library(plyr)
+
+Child.e = read.csv("./Data/Expt A/Gelman_Expt2_Data_Edinburgh.csv", header = T)
+Child.e$Loc <- "Edin"
+Child.b = read.csv("./Data/Expt A/Gelman_Expt2_Data_Ber.csv", header = T)
+Child.b$Loc <- "Ber"
+Child.e4b = read.csv("./Data/Expt A/Gelman_Expt2_Data_Ed_For_Ber.csv",header = T)
+Child.e4b$Loc <- "EdForBer"
+Child <- rbind(Child.e,Child.b, Child.e4b)
+Child <- subset(Child, trial.type == "critical" & age %in% c(3,4) & !exclude %in% c("yes"))
+Child$Choice <- ifelse(Child$superordinate.match ==1,0, ifelse(Child$superordinate.match == 0,1,NA))
+
+Child$Meaning <- ifelse(Child$concept.type == "Non-Polysemous","Unambiguous (Same Kind)","Flexible (Thematic Relation)")
+Child$Meaning <- factor(Child$Meaning, levels = c("Unambiguous (Same Kind)","Flexible (Thematic Relation)") )
+Child$Label <- ifelse(Child$label == "no","No Label", "Shared Label")
+Child$Label <- factor(Child$Label, levels = c("Shared Label","No Label") )
+Child$Age <- as.factor(ifelse(Child$age == 3,3,4))
+Child$TriadType <- "Chicken"
+Child[Child$triad.type == "glass",]$TriadType <- "Glass"
+Child[Child$triad.type == "horse",]$TriadType <- "Horse"
+summaryBy(Choice ~ age + Meaning + Label, data = subset(Child, trial.type == "critical"),na.rm=T)
+Child$Expt <- "Expt2"
+Child$ID <- paste(Child$Expt,Child$ID,sep = "_")
+Child.Expt2 <- data.frame(ID = Child$ID,Label = Child$Label,Meaning = Child$Meaning,Choice = Child$Choice,Expt = Child$Expt,Age = Child$Age,Triad.Type = Child$TriadType,QuNum = Child$question.number)
+
+Child = read.csv("./Data/Expt B/ChildData_Final.csv", header = T)
+contrasts(Child$LabelType)[1] <- -1
+contrasts(Child$WordType)[1] <- -1
+#Child$WordType <- revalue(Child$WordType, c("Unambiguous" = "Same Kind", "Polysemous" = "Polysemous"))
+Child$LabelType <- factor(Child$LabelType, levels(Child$LabelType)[c(2,1)])
+Child$WordType <- factor(Child$WordType, levels(Child$WordType)[c(2,1)])
+
+Child <- subset(Child, trial.type == "Critical")
+Child <- subset(Child, Exclude == "No")
+
+Child$AgeGroup <- "Three"
+Child[Child$Age == 4,]$AgeGroup <- "Four"
+Child <- Child[!Child$Age > 4 & Child$Location!="LAB",]
+Child$AgeGroup <- ordered(Child$AgeGroup, levels = c("Three","Four"))
+Child$AgeMoSt <- (Child$Age.Months - mean(Child$Age.Months))/sd(Child$Age.Months)
+Child$Age <- as.factor(Child$Age)
+Child$Loc <- "Ber"
+Child[Child$Location == "Edinburgh ",]$Loc <- "Edin"
+Child$Loc <- as.factor(Child$Loc)
+contrasts(Child$Expln)[1] <- -1
+contrasts(Child$Loc)[1] <- -1
+contrasts(Child$Age)[1] <- -1
+contrasts(Child$LabelType)[1] <- -1
+contrasts(Child$WordType)[1] <- -1
+Child$Choice <- ifelse(Child$UnrelatedChoice == 1, 0, ifelse(Child$UnrelatedChoice == 0,1,NA))
+
+Child$Meaning <- ifelse(Child$WordType == "Polysemous","Flexible (Thematic Relation)", "Unambiguous (Same Kind)")
+Child$Meaning <- factor(Child$Meaning, levels = c("Unambiguous (Same Kind)","Flexible (Thematic Relation)") )
+Child$Label <- ifelse(Child$LabelType == "Same","Shared Label", "Different Label")
+Child$Label <- factor(Child$Label, levels = c("Shared Label","Different Label") )
+Child$ID <- Child$SubjNo
+Child$Expt <- "Expt1"
+Child$ID <- paste(Child$Expt,Child$ID,sep = "_")
+Child.Expt1 <- data.frame(ID = Child$ID,Label = Child$Label,Meaning = Child$Meaning,Choice = Child$Choice,Expt = Child$Expt,Age = Child$Age,Triad.Type = Child$TriadType,QuNum = Child$question.number)
+
+Child <- rbind(Child.Expt1,Child.Expt2)
+Child$Label_c <- as.factor(ifelse(Child$Label == "Shared Label", "Shared", "Other"))
+Child$Label_c <- factor(Child$Label_c, levels(Child$Label_c)[c(2:1)])
+contrasts(Child$Label_c)[1] <- -1
+contrasts(Child$Meaning)[1] <- -1
+contrasts(Child$Age)[1] <- -1
+contrasts(Child$Expt)[1] <- -1
+
+
+Adult.e = read.csv("./Data/Expt A/Gelman_Expt2_Data_Ed_Adult.csv", header = T)
+Adult.e$Loc <- "Edin"
+Adult.b = read.csv("./Data/Expt A/Gelman_Expt2_Data_Ber_Adult.csv", header = T)
+Adult.b$Loc <- "Ber"
+Adult <- rbind(Adult.b, Adult.e)
+Adult <- subset(Adult, trial.type == "critical" & !exclude %in% c("yes"))
+Adult$Choice <- ifelse(Adult$superordinate.match ==1,0, ifelse(Adult$superordinate.match == 0,1,NA))
+
+Adult$Meaning <- ifelse(Adult$concept.type == "Non-Polysemous","Unambiguous (Same Kind)","Flexible (Thematic Relation)")
+Adult$Meaning <- factor(Adult$Meaning, levels = c("Unambiguous (Same Kind)","Flexible (Thematic Relation)") )
+Adult$Label <- ifelse(Adult$label == "no","No Label", "Shared Label")
+Adult$Label <- factor(Adult$Label, levels = c("Shared Label","No Label") )
+Adult$TriadType <- "Chicken"
+Adult[Adult$triad.type == "glass",]$TriadType <- "Glass"
+Adult[Adult$triad.type == "horse",]$TriadType <- "Horse"
+Adult$Expt <- "Expt2"
+Adult$ID <- paste(Adult$Expt,Adult$ID,sep = "_")
+Adult.Expt2 <- data.frame(ID = Adult$ID,Label = Adult$Label,Meaning = Adult$Meaning,Choice = Adult$Choice,Expt = Adult$Expt,Triad.Type = Adult$TriadType,QuNum = Adult$question.number)
+
+Adult = read.csv("./Data/Expt B/AdultData_Final.csv", header = T)
+contrasts(Adult$LabelType)[1] <- -1
+contrasts(Adult$WordType)[1] <- -1
+#Adult$WordType <- revalue(Adult$WordType, c("Unambiguous" = "Same Kind", "Polysemous" = "Polysemous"))
+Adult$LabelType <- factor(Adult$LabelType, levels(Adult$LabelType)[c(2,1)])
+Adult$WordType <- factor(Adult$WordType, levels(Adult$WordType)[c(2,1)])
+contrasts(Adult$LabelType)[1] <- -1
+contrasts(Adult$WordType)[1] <- -1
+Adult$Choice <- ifelse(Adult$UnrelatedChoice == 1, 0, ifelse(Adult$UnrelatedChoice == 0,1,NA))
+
+Adult$Meaning <- ifelse(Adult$WordType == "Polysemous","Flexible (Thematic Relation)", "Unambiguous (Same Kind)")
+Adult$Meaning <- factor(Adult$Meaning, levels = c("Unambiguous (Same Kind)","Flexible (Thematic Relation)") )
+Adult$Label <- ifelse(Adult$LabelType == "Same","Shared Label", "Different Label")
+Adult$Label <- factor(Adult$Label, levels = c("Shared Label","Different Label") )
+Adult$ID <- Adult$SubjNo
+Adult$Expt <- "Expt1"
+Adult$ID <- paste(Adult$Expt,Adult$ID,sep = "_")
+Adult.Expt1 <- data.frame(ID = Adult$ID,Label = Adult$Label,Meaning = Adult$Meaning,Choice = Adult$Choice,Expt = Adult$Expt,Triad.Type = Adult$TriadType,QuNum = Adult$ItemNo)
+
+Adult <- rbind(Adult.Expt1,Adult.Expt2)
+Adult$Label_c <- as.factor(ifelse(Adult$Label == "Shared Label", "Shared", "Other"))
+Adult$Label_c <- factor(Adult$Label_c, levels(Adult$Label_c)[c(2:1)])
+contrasts(Adult$Label_c)[1] <- -1
+contrasts(Adult$Meaning)[1] <- -1
+contrasts(Adult$Expt)[1] <- -1
+
+
+```
+### Adults
+```{r comb_expt_graphs_adult, echo = FALSE}
+
+
+Adult.means <- summaryBy(Choice~ Expt+Meaning + Label_c , data=Adult, na.rm = T, FUN = c(mean,sd))
+Adult.means$SE <- Adult.means$Choice.sd/sqrt(length(unique(Adult$ID))/2)
+
+avg.plot<- ggplot(Adult.means, aes(Meaning, Choice.mean, fill = Label_c)) + 
+ stat_summary(fun.y="mean", geom="bar", position = "dodge")
+#add error bars
+avg.plot+geom_errorbar(aes(ymax=Adult.means$Choice.mean+Adult.means$SE, ymin=Adult.means$Choice.mean-Adult.means$SE), position=position_dodge(.9), width = 0)+theme_bw()+ylab("Proportion adults choosing related item")+ylim(c(0,1.01))+ geom_hline(yintercept = 0.5, colour = "black",lty = 3)+xlab("")+facet_grid(.~Expt)+ scale_x_discrete(breaks=levels(Adult.means$Meaning),
+                      labels=c("Unambiguous", "Flexible"))
+```
+And data analysis
+```{r comb_analysis_adults, echo = FALSE}
+length(unique(Adult$ID))
+kable(summary(glmer(Choice ~ Meaning*Label_c*Expt + (1|ID) , data = Adult, family = "binomial"))$coefficients, digits = 2) # maximal structure that allows convergence
+
+```
+
+### Children
+Graph the two experiments side-by-side. Other is Synonym in Expt 2, No Label in Expt 1.
+
+```{r comb_expt_graphs_child, echo = FALSE}
+
+Child.means <- summaryBy(Choice~ Expt+Meaning + Label_c , data=Child, na.rm = T, FUN = c(mean,sd))
+Child.means$SE <- Child.means$Choice.sd/sqrt(length(unique(Child$ID))/2)
+
+avg.plot<- ggplot(Child.means, aes(Meaning, Choice.mean, fill = Label_c)) + 
+ stat_summary(fun.y="mean", geom="bar", position = "dodge")
+#add error bars
+avg.plot+geom_errorbar(aes(ymax=Child.means$Choice.mean+Child.means$SE, ymin=Child.means$Choice.mean-Child.means$SE), position=position_dodge(.9), width = 0)+theme_bw()+ylab("Proportion children choosing related item")+ylim(c(0,1.01))+ geom_hline(yintercept = 0.5, colour = "black",lty = 3)+xlab("")+facet_grid(.~Expt)+ scale_x_discrete(breaks=levels(Child.means$Meaning),
+                      labels=c("Unambiguous", "Flexible"))
+```
+
+And data analysis
+```{r comb_analysis_kids, echo = FALSE}
+
+kable(summary(glmer(Choice ~ Meaning*Label_c*Expt + (1+Label_c|ID) + (1+Meaning|Triad.Type), data = Child, family = "binomial"))$coefficients, digits = 2) # maximal structure that allows convergence
+```
+
+We can also look at how this varies by age
+```{r comb_analysis_age_graph, echo= FALSE}
+Child.means <- summaryBy(Choice~ Age+Expt+Meaning + Label_c , data=Child, na.rm = T, FUN = c(mean,sd))
+Child.means$SE <- Child.means$Choice.sd/sqrt(length(unique(Child$ID))/2)
+
+avg.plot<- ggplot(Child.means, aes(Meaning, Choice.mean, fill = Label_c)) + 
+ stat_summary(fun.y="mean", geom="bar", position = "dodge")
+#add error bars
+avg.plot+geom_errorbar(aes(ymax=Child.means$Choice.mean+Child.means$SE, ymin=Child.means$Choice.mean-Child.means$SE), position=position_dodge(.9), width = 0)+theme_bw()+ylab("Proportion children choosing related item")+ylim(c(0,1.01))+ geom_hline(yintercept = 0.5, colour = "black",lty = 3)+xlab("")+facet_grid(Age~Expt)+ scale_x_discrete(breaks=levels(Child.means$Meaning),
+                      labels=c("Unambiguous", "Flexible"))
+```
+
+And analysis (note that model doesn't converge with random intercepts for subjects, just items).
+
+```{r comb_analysis_age, echo = FALSE}
+library(papeR)
+kable(summary(glmer(Choice ~ Meaning*Label_c*Age*Expt + (1|ID)+  (1|Triad.Type), data = Child, family = "binomial"))$coefficients, digits = 2) # maximal structure that allows convergence
+```
+
+## Analysis of vocab survey
+Proportion of labels and synonyms that parents rate that their child knows, or rate that they are unsures if the child knows.
+
+```{r vocab}
+library(tidyr)
+library(dplyr)
+vocab.w <-read.csv("./Data/VocabSurvey/Vocab_Full.csv", header = T)
+vocab <- gather(vocab.w, word, response,rocker:glass.windowpane,factor_key = TRUE)
+vocab <- subset(vocab, word %in% c("rocker","chicken.drumstick","chicken.hen","zebra","horse.foal","plastic","glass.cup","windowpane","cup","duck","horse.rocker","foal","drumsticks","hen","glass.windowpane"))
+vocab$word <- ordered(vocab$word, levels = c("chicken.hen","hen","chicken.drumstick","drumsticks","duck", 
+                                             "glass.windowpane","windowpane","glass.cup","cup","plastic",
+                                             "horse.foal","foal","horse.rocker","rocker","zebra"))
+vocab$known <- ifelse(vocab$response %in% c("yes","notsure"),1,0)
+summaryBy(known ~ word, data = vocab)
+```
+
+#### Discussion
+No robust effect of synonyms, and effect was signif different between two experiments.
+
+###Gen discussion
+What can lex flex tell us about role of labels in induction?
+
+What can induction tell us about children's early word meanings?
