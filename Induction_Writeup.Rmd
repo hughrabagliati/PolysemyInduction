@@ -310,7 +310,7 @@ avg.plot+geom_errorbar(aes(ymax=Adult.means$Choice.mean+Adult.means$SE, ymin=Adu
 Label * Meaning mixed effects model, followed by t-tests against chance for each condition.
 ```{r expt1_adult_analysis, echo=FALSE}
 print(paste("Unambig", length(unique(subset(Adult, Meaning == "Unambiguous (Same Kind)")$SubjNo))))
-print(paste("Ambig", length(unique(subset(Adult, Meaning != "Unambiguous (Same Kind)")$SubjNo))))
+print(paste("Polysemy", length(unique(subset(Adult, Meaning != "Unambiguous (Same Kind)")$SubjNo))))
 
 kable(summary(glmer(Choice~WordType*LabelType + (1+LabelType|SubjNo) + (1|TriadType), data = Adult, family = "binomial"))$coefficients, digits = 2)
 
@@ -506,6 +506,7 @@ Adult$ID <- paste(Adult$Expt,Adult$ID,sep = "_")
 Adult.Expt2 <- data.frame(ID = Adult$ID,Label = Adult$Label,Meaning = Adult$Meaning,Choice = Adult$Choice,Expt = Adult$Expt,Triad.Type = Adult$TriadType,QuNum = Adult$question.number)
 
 Adult = read.csv("./Data/Expt B/AdultData_Final.csv", header = T)
+
 contrasts(Adult$LabelType)[1] <- -1
 contrasts(Adult$WordType)[1] <- -1
 #Adult$WordType <- revalue(Adult$WordType, c("Unambiguous" = "Same Kind", "Polysemous" = "Polysemous"))
