@@ -25,6 +25,7 @@ library(dplyr)
 library(doBy)
 library(sn)
 library(bootstrap)
+library(cowplot)
 
 ```
 #### Introduction
@@ -46,6 +47,27 @@ library(bootstrap)
 2. What do these theories say about lex flex?
 Gelman - labels are category markers. To the degree that a labels meaning can be discerned, there shouldn't be a problem, as reasoning is done based on kinds, not labels.
 Sloutsky - labels contribute to similarity. Overlapping labels should contribute to similarity judgments and thereby cause children to "hallucinate" that distinct kinds are the same.
+
+
+#### Calculations for getting a few predictions from the Sloutsky & Fisher model.
+
+Sloutsky & Fisher's lovely model presumes that induction judgments are based on the relative similarity of a Target picture to a picture X, and to a picture Y. As they show, this can be reduced to p(Y) = 1/(1 + (W * S_X) / W * S_Y), where W is the weight given by a shared/unshared word, S_X is similarity of X to target, and S_Y is similarity of Y to target. 
+
+Assume that if Y and target share a label then W = 1, and that if X and Target do not share a label then W = 0.1 (following S&F2004).
+When Y shares a label and  similarity ratio = 1 then p(Y) = 1/(1+((0.1\*0.5)/0.5)) = `r round(1/(1+((0.1*0.5)/0.5)),2)`, but when Y does not share a label then p(Y) =  1/(1+((1\*0.5)/0.5)) = `r round(1/(1+((1*0.5)/0.5)),2)`
+
+If similarity ratio = 10 then shared label p(Y) = 1/(1+((0.1\*0.5)/0.05)) = `r round(1/(1+((0.1*0.5)/0.05)),2)` while non-shared label p(Y) = 1/(1+((1\*0.5)/0.05)) = `r round(1/(1+((1*0.5)/0.05)),2)`.
+
+If similarity ratio = 100 then shared label p(Y) = 1/(1+((0.1 \* 0.5)/0.005)) = `r round(1/(1+((0.1*0.5)/0.005)),2)` while non-shared label p(Y) = 1/(1+((1\*0.5)/0.005)) = `r round(1/(1+((1*0.5)/0.005)),2)`.
+
+Adding a label still provides a 10%age point increase in p(Y) if the Y picture is `r 0.5/0.0064` times less similar to the target than the X picture. (code: 1/(1+((0.1\*0.5)/0.0064)) - 1/(1+((1\*0.5)/0.0064)) which produces a `r 100*round(1/(1+((0.1*0.5)/0.0064)) - 1/(1+((1*0.5)/0.0064)),2)` percentage point increase in probability of choosing Y.) 
+
+```{r slout_model}
+# 
+
+
+# 
+```
 
 ####Experiment 1
 This vs chicken experiment. We compare label (this chicken, this chicken) with no label (this one, this one).
@@ -111,7 +133,7 @@ Adult.means$SE <- Adult.means$Choice.sd/sqrt(length(unique(Adult$ID))/2)
 avg.plot<- ggplot(Adult.means, aes(Meaning, Choice.mean, fill = Label)) + 
  stat_summary(fun.y="mean", geom="bar", position = "dodge")
 #add error bars
-avg.plot+geom_errorbar(aes(ymax=Adult.means$Choice.mean+Adult.means$SE, ymin=Adult.means$Choice.mean-Adult.means$SE), position=position_dodge(.9), width = 0)+theme_bw()+ylab("Proportion adults choosing related item")+ylim(c(-0.05,1))+ geom_hline(yintercept = 0.5, colour = "black",lty = 3)+xlab("")
+avg.plot+geom_errorbar(aes(ymax=Adult.means$Choice.mean+Adult.means$SE, ymin=Adult.means$Choice.mean-Adult.means$SE), position=position_dodge(.9), width = 0)+theme_bw()+ylab("Proportion adults choosing dissimilar test picture")+ylim(c(-0.05,1))+ geom_hline(yintercept = 0.5, colour = "black",lty = 3)+xlab("")
 
 
 Adult.means <- summaryBy(Choice~ triad.type+Meaning + Label , data=Adult, na.rm = T, FUN = c(mean,sd))
@@ -120,7 +142,7 @@ Adult.means$SE <- Adult.means$Choice.sd/sqrt(length(unique(Adult$ID))/2)
 avg.plot<- ggplot(Adult.means, aes(Meaning, Choice.mean, fill = Label)) + 
  stat_summary(fun.y="mean", geom="bar", position = "dodge")
 #add error bars
-avg.plot+geom_errorbar(aes(ymax=Adult.means$Choice.mean+Adult.means$SE, ymin=Adult.means$Choice.mean-Adult.means$SE), position=position_dodge(.9), width = 0)+theme_bw()+ylab("Proportion adults choosing related item")+ylim(c(-0.05,1.05))+ geom_hline(yintercept = 0.5, colour = "black",lty = 3)+xlab("")+facet_grid(.~triad.type)+ scale_x_discrete(breaks=levels(Adult.means$Meaning),
+avg.plot+geom_errorbar(aes(ymax=Adult.means$Choice.mean+Adult.means$SE, ymin=Adult.means$Choice.mean-Adult.means$SE), position=position_dodge(.9), width = 0)+theme_bw()+ylab("Proportion adults choosing dissimilar test picture")+ylim(c(-0.05,1.05))+ geom_hline(yintercept = 0.5, colour = "black",lty = 3)+xlab("")+facet_grid(.~triad.type)+ scale_x_discrete(breaks=levels(Adult.means$Meaning),
                       labels=c("Unambiguous", "Flexible"))
 ```
 
@@ -134,6 +156,7 @@ print(summaryBy(age ~ 1, data = child.descripts, FUN = c(mean,range)))
 kable(summary(glmer(Choice~Label*Meaning + (1+Label|ID) + (1|triad.type) , data = Adult, family = "binomial"))$coefficients, digits = 2)
 # Tests against Chance
 summaryBy(Choice ~ ID + Meaning + Label, data = Adult, keep.names = T,na.rm=T) -> Adult.Sum
+kable(summaryBy(Choice ~ Meaning + Label, data = Adult.Sum, FUN = c(mean,sd)) )
 t.test(subset(Adult.Sum, Meaning == "Unambiguous (Same Kind)" & Label == "Shared Label")$Choice, mu = 0.5)
 t.test(subset(Adult.Sum, Meaning == "Unambiguous (Same Kind)" & Label == "No Label")$Choice, mu = 0.5)
 t.test(subset(Adult.Sum, Meaning == "Flexible (Thematic Relation)" & Label == "Shared Label")$Choice, mu = 0.5)
@@ -159,7 +182,7 @@ Child.means$SE <- Child.means$Choice.sd/sqrt(length(unique(Child$ID))/2)
 avg.plot<- ggplot(Child.means, aes(Meaning, Choice.mean, fill = Label)) + 
  stat_summary(fun.y="mean", geom="bar", position = "dodge")
 #add error bars
-avg.plot+geom_errorbar(aes(ymax=Child.means$Choice.mean+Child.means$SE, ymin=Child.means$Choice.mean-Child.means$SE), position=position_dodge(.9), width = 0)+theme_bw()+ylab("Proportion children choosing related item")+ylim(c(0,1))+ geom_hline(yintercept = 0.5, colour = "black",lty = 3)+xlab("")
+avg.plot+geom_errorbar(aes(ymax=Child.means$Choice.mean+Child.means$SE, ymin=Child.means$Choice.mean-Child.means$SE), position=position_dodge(.9), width = 0)+theme_bw()+ylab("Proportion children choosing dissimilar test picture")+ylim(c(0,1))+ geom_hline(yintercept = 0.5, colour = "black",lty = 3)+xlab("")
 
 
 Child.means <- summaryBy(Choice~ triad.type+Meaning + Label , data=Child, na.rm = T, FUN = c(mean,sd))
@@ -168,7 +191,7 @@ Child.means$SE <- Child.means$Choice.sd/sqrt(length(unique(Child$ID))/2)
 avg.plot<- ggplot(Child.means, aes(Meaning, Choice.mean, fill = Label)) + 
  stat_summary(fun.y="mean", geom="bar", position = "dodge")
 #add error bars
-avg.plot+geom_errorbar(aes(ymax=Child.means$Choice.mean+Child.means$SE, ymin=Child.means$Choice.mean-Child.means$SE), position=position_dodge(.9), width = 0)+theme_bw()+ylab("Proportion children choosing related item")+ylim(c(0,1))+ geom_hline(yintercept = 0.5, colour = "black",lty = 3)+xlab("")+facet_grid(.~triad.type)+ scale_x_discrete(breaks=levels(Child.means$Meaning),
+avg.plot+geom_errorbar(aes(ymax=Child.means$Choice.mean+Child.means$SE, ymin=Child.means$Choice.mean-Child.means$SE), position=position_dodge(.9), width = 0)+theme_bw()+ylab("Proportion children choosing dissimilar test picture")+ylim(c(0,1))+ geom_hline(yintercept = 0.5, colour = "black",lty = 3)+xlab("")+facet_grid(.~triad.type)+ scale_x_discrete(breaks=levels(Child.means$Meaning),
                       labels=c("Unambiguous", "Flexible"))
 ```
 
@@ -181,10 +204,13 @@ kable(summary(glmer(Choice~Label + (1+Label|ID) + (1|triad.type), data = subset(
 
 # Tests against Chance
 summaryBy(Choice ~ ID + Meaning + Label, data = Child, keep.names = T) -> Child.Sum
+kable(summaryBy(Choice ~ Meaning + Label, data = Child.Sum, FUN = c(mean,sd)) )
 t.test(subset(Child.Sum, Meaning == "Unambiguous (Same Kind)" & Label == "Shared Label")$Choice, mu = 0.5)
 t.test(subset(Child.Sum, Meaning == "Unambiguous (Same Kind)" & Label == "No Label")$Choice, mu = 0.5)
 t.test(subset(Child.Sum, Meaning == "Flexible (Thematic Relation)" & Label == "Shared Label")$Choice, mu = 0.5)
 t.test(subset(Child.Sum, Meaning == "Flexible (Thematic Relation)" & Label == "No Label")$Choice, mu = 0.5)
+
+
 
 
 full_data.adult <- summaryBy(Choice~ ID + triad.type+Pop+Meaning + Label, data=Adult, na.rm = T, FUN = c(mean), keep.names = TRUE)
@@ -198,16 +224,17 @@ full_data$Pop <- ordered(full_data$Pop, levels=c("Child","Adult"))
 full_data.pop <- summaryBy(Choice~ ID + Pop+graph_meaning + Label, data=full_data, na.rm = T, FUN = c(mean), keep.names = TRUE)
 full_data.means <- summaryBy(Choice~ Pop+graph_meaning + Label, data=full_data.pop, na.rm = T, FUN = c(mean,ci.low,ci.high))
 
+
 avg.plot<- ggplot(full_data.means, aes(graph_meaning, Choice.mean, fill = Label)) + 
- stat_summary(fun.y="mean", geom="bar", position = "dodge")+facet_wrap(~Pop)+ylim(c(0,1))
-#add error bars
-avg.plot+geom_errorbar(aes(ymax=
+ stat_summary(fun.y="mean", geom="bar", position = "dodge")+facet_wrap(~Pop)+ylim(c(0,1))+geom_errorbar(aes(ymax=
                              full_data.means$Choice.mean+full_data.means$Choice.ci.high,
                            ymin=full_data.means$Choice.mean - full_data.means$Choice.ci.low),
-                           position=position_dodge(.9), width = 0)+theme_bw()+ylab("Proportion participants choosing related item")+ geom_hline(yintercept = 0.5, colour = "black",lty = 3)+xlab("")
+                           position=position_dodge(.9), width = 0)+theme_bw()+ylab("Proportion participants choosing Dissimilar Test")+ geom_hline(yintercept = 0.5, colour = "black",lty = 3)+xlab("")
+#add error bars
+avg.plot
 
  
- full_data.means <- summaryBy(Choice~ triad.type+Pop+ID+graph_meaning + Label , data=full_data, na.rm = T, FUN = c(mean,sd))
+ full_data.items.means <- summaryBy(Choice~ triad.type+Pop+ID+graph_meaning + Label , data=full_data, na.rm = T, FUN = c(mean,sd))
 
 full_data.pop.triad <- summaryBy(Choice~ ID + Pop+triad.type+graph_meaning + Label, data=full_data, na.rm = T, FUN = c(mean), keep.names = TRUE)
 full_data.means.triad <- summaryBy(Choice~ Pop+triad.type+graph_meaning + Label, data=full_data.pop.triad, na.rm = T, FUN = c(mean,ci.low,ci.high))
@@ -215,9 +242,10 @@ full_data.means.triad <- summaryBy(Choice~ Pop+triad.type+graph_meaning + Label,
  avg.plot2<- ggplot(full_data.means.triad, aes(graph_meaning, Choice.mean, fill = Label)) + 
   stat_summary(fun.y="mean", geom="bar", position = "dodge")+geom_errorbar(aes(ymax=
                              full_data.means.triad$Choice.mean+full_data.means.triad$Choice.ci.high,
-                           ymin=full_data.means.triad$Choice.mean - full_data.means.triad$Choice.ci.low), position=position_dodge(.9), width = 0)+theme_bw()+ylab("Proportion participants choosing related item")+ylim(c(0,1))+ geom_hline(yintercept = 0.5, colour = "black",lty = 3)+xlab("")+facet_grid(Pop~triad.type)+ scale_x_discrete(breaks=levels(full_data.means.triad$graph_meaning),
-                       labels=c("Same \nSense", "Diff. \nSense"))
+                           ymin=full_data.means.triad$Choice.mean - full_data.means.triad$Choice.ci.low), position=position_dodge(.9), width = 0)+theme_bw()+ylab("Proportion participants choosing Dissimilar Test")+ylim(c(0,1))+ geom_hline(yintercept = 0.5, colour = "black",lty = 3)+xlab("")+facet_grid(Pop~triad.type)+ scale_x_discrete(breaks=levels(full_data.means.triad$graph_meaning),
+                       labels=c("Same \nSense", "Diff. \nSense"))+guides(fill=FALSE)
 avg.plot2
+plot_grid(avg.plot, avg.plot2, labels = "AUTO",ncol = 1, align = 'v')
 ```
 
 #### Discussion
@@ -294,7 +322,7 @@ Adult.means$SE <- Adult.means$Choice.sd/sqrt(length(unique(Adult$SubjNo))/2)
 avg.plot<- ggplot(Adult.means, aes(Meaning, Choice.mean, fill = Label)) + 
  stat_summary(fun.y="mean", geom="bar", position = "dodge")
 #add error bars
-avg.plot+geom_errorbar(aes(ymax=Adult.means$Choice.mean+Adult.means$SE, ymin=Adult.means$Choice.mean-Adult.means$SE), position=position_dodge(.9), width = 0)+theme_bw()+ylab("Proportion adults choosing related item")+ylim(c(0,1))+ geom_hline(yintercept = 0.5, colour = "black",lty = 3)+xlab("")
+avg.plot+geom_errorbar(aes(ymax=Adult.means$Choice.mean+Adult.means$SE, ymin=Adult.means$Choice.mean-Adult.means$SE), position=position_dodge(.9), width = 0)+theme_bw()+ylab("Proportion adults choosing dissimilar test picture")+ylim(c(0,1))+ geom_hline(yintercept = 0.5, colour = "black",lty = 3)+xlab("")
 
 
 Adult.means <- summaryBy(Choice~ TriadType+Meaning + Label , data=Adult, na.rm = T, FUN = c(mean,sd))
@@ -303,7 +331,7 @@ Adult.means$SE <- Adult.means$Choice.sd/sqrt(length(unique(Adult$SubjNo))/2)
 avg.plot<- ggplot(Adult.means, aes(Meaning, Choice.mean, fill = Label)) + 
  stat_summary(fun.y="mean", geom="bar", position = "dodge")
 #add error bars
-avg.plot+geom_errorbar(aes(ymax=Adult.means$Choice.mean+Adult.means$SE, ymin=Adult.means$Choice.mean-Adult.means$SE), position=position_dodge(.9), width = 0)+theme_bw()+ylab("Proportion adults choosing related item")+ylim(c(-0.05,1.05))+ geom_hline(yintercept = 0.5, colour = "black",lty = 3)+xlab("")+facet_grid(.~TriadType)+ scale_x_discrete(breaks=levels(Adult.means$Meaning),
+avg.plot+geom_errorbar(aes(ymax=Adult.means$Choice.mean+Adult.means$SE, ymin=Adult.means$Choice.mean-Adult.means$SE), position=position_dodge(.9), width = 0)+theme_bw()+ylab("Proportion adults choosing dissimilar test picture")+ylim(c(-0.05,1.05))+ geom_hline(yintercept = 0.5, colour = "black",lty = 3)+xlab("")+facet_grid(.~TriadType)+ scale_x_discrete(breaks=levels(Adult.means$Meaning),
                       labels=c("Unambiguous", "Flexible"))
 ```
 
@@ -321,6 +349,7 @@ kable(summary(glmer(Choice~LabelType + (1+LabelType|SubjNo) + (1|TriadType), dat
 
 
 summaryBy(Choice ~ SubjNo + WordType + LabelType, data = Adult, keep.names = T) -> Adult.Sum
+kable(summaryBy(Choice ~ WordType + LabelType, data = Adult.Sum, FUN = c(mean,sd)) )
 t.test(subset(Adult.Sum, WordType == "Non-Polysemous" & LabelType == "Same")$Choice, mu = 0.5)
 t.test(subset(Adult.Sum, WordType == "Non-Polysemous" & LabelType == "Different")$Choice, mu = 0.5)
 t.test(subset(Adult.Sum, WordType == "Polysemous" & LabelType == "Different")$Choice, mu = 0.5)
@@ -347,7 +376,7 @@ Child.means$SE <- Child.means$Choice.sd/sqrt(length(unique(Child$SubjNo))/2)
 avg.plot<- ggplot(Child.means, aes(Meaning, Choice.mean, fill = Label)) + 
  stat_summary(fun.y="mean", geom="bar", position = "dodge")
 #add error bars
-avg.plot+geom_errorbar(aes(ymax=Child.means$Choice.mean+Child.means$SE, ymin=Child.means$Choice.mean-Child.means$SE), position=position_dodge(.9), width = 0)+theme_bw()+ylab("Proportion children choosing related item")+ylim(c(0,0.75))+ geom_hline(yintercept = 0.5, colour = "black",lty = 3)+xlab("")
+avg.plot+geom_errorbar(aes(ymax=Child.means$Choice.mean+Child.means$SE, ymin=Child.means$Choice.mean-Child.means$SE), position=position_dodge(.9), width = 0)+theme_bw()+ylab("Proportion children choosing dissimilar test picture")+ylim(c(0,0.75))+ geom_hline(yintercept = 0.5, colour = "black",lty = 3)+xlab("")
 
 
 Child.means <- summaryBy(Choice~ TriadType+Meaning + Label , data=Child, na.rm = T, FUN = c(mean,sd))
@@ -356,7 +385,7 @@ Child.means$SE <- Child.means$Choice.sd/sqrt(length(unique(Child$SubjNo))/2)
 avg.plot<- ggplot(Child.means, aes(Meaning, Choice.mean, fill = Label)) + 
  stat_summary(fun.y="mean", geom="bar", position = "dodge")
 #add error bars
-avg.plot+geom_errorbar(aes(ymax=Child.means$Choice.mean+Child.means$SE, ymin=Child.means$Choice.mean-Child.means$SE), position=position_dodge(.9), width = 0)+theme_bw()+ylab("Proportion children choosing related item")+ylim(c(0,0.75))+ geom_hline(yintercept = 0.5, colour = "black",lty = 3)+xlab("")+facet_grid(.~TriadType)+ scale_x_discrete(breaks=levels(Child.means$Meaning),
+avg.plot+geom_errorbar(aes(ymax=Child.means$Choice.mean+Child.means$SE, ymin=Child.means$Choice.mean-Child.means$SE), position=position_dodge(.9), width = 0)+theme_bw()+ylab("Proportion children choosing dissimilar test picture")+ylim(c(0,0.75))+ geom_hline(yintercept = 0.5, colour = "black",lty = 3)+xlab("")+facet_grid(.~TriadType)+ scale_x_discrete(breaks=levels(Child.means$Meaning),
                       labels=c("Unambiguous", "Flexible"))
 
 
@@ -373,15 +402,15 @@ full_data.pop <- summaryBy(Choice~ SubjNo + Pop+graph_meaning + Label, data=full
 full_data.means <- summaryBy(Choice~ Pop+graph_meaning + Label, data=full_data.pop, na.rm = T, FUN = c(mean,ci.low,ci.high))
 
 avg.plot<- ggplot(full_data.means, aes(graph_meaning, Choice.mean, fill = Label)) + 
- stat_summary(fun.y="mean", geom="bar", position = "dodge")+facet_wrap(~Pop)+ylim(c(0,1))
-#add error bars
-avg.plot+geom_errorbar(aes(ymax=
+ stat_summary(fun.y="mean", geom="bar", position = "dodge")+facet_wrap(~Pop)+ylim(c(0,1))+geom_errorbar(aes(ymax=
                              full_data.means$Choice.mean+full_data.means$Choice.ci.high,
                            ymin=full_data.means$Choice.mean - full_data.means$Choice.ci.low),
-                           position=position_dodge(.9), width = 0)+theme_bw()+ylab("Proportion participants choosing related item")+ geom_hline(yintercept = 0.5, colour = "black",lty = 3)+xlab("")
+                           position=position_dodge(.9), width = 0)+theme_bw()+ylab("Proportion participants choosing Dissimilar Test")+ geom_hline(yintercept = 0.5, colour = "black",lty = 3)+xlab("")
+#add error bars
+avg.plot
 
  
- full_data.means <- summaryBy(Choice~ TriadType+Pop+SubjNo+graph_meaning + Label , data=full_data, na.rm = T, FUN = c(mean,sd))
+ full_data.item.means <- summaryBy(Choice~ TriadType+Pop+SubjNo+graph_meaning + Label , data=full_data, na.rm = T, FUN = c(mean,sd))
 
 full_data.pop.triad <- summaryBy(Choice~ SubjNo + Pop+TriadType+graph_meaning + Label, data=full_data, na.rm = T, FUN = c(mean), keep.names = TRUE)
 full_data.means.triad <- summaryBy(Choice~ Pop+TriadType+graph_meaning + Label, data=full_data.pop.triad, na.rm = T, FUN = c(mean,ci.low,ci.high))
@@ -389,9 +418,10 @@ full_data.means.triad <- summaryBy(Choice~ Pop+TriadType+graph_meaning + Label, 
  avg.plot2<- ggplot(full_data.means.triad, aes(graph_meaning, Choice.mean, fill = Label)) + 
   stat_summary(fun.y="mean", geom="bar", position = "dodge")+geom_errorbar(aes(ymax=
                              full_data.means.triad$Choice.mean+full_data.means.triad$Choice.ci.high,
-                           ymin=full_data.means.triad$Choice.mean - full_data.means.triad$Choice.ci.low), position=position_dodge(.9), width = 0)+theme_bw()+ylab("Proportion participants choosing related item")+ylim(c(0,1))+ geom_hline(yintercept = 0.5, colour = "black",lty = 3)+xlab("")+facet_grid(Pop~TriadType)+ scale_x_discrete(breaks=levels(full_data.means.triad$graph_meaning),
-                       labels=c("Same \nSense", "Diff. \nSense"))
+                           ymin=full_data.means.triad$Choice.mean - full_data.means.triad$Choice.ci.low), position=position_dodge(.9), width = 0)+theme_bw()+ylab("Proportion participants choosing Dissimilar Test")+ylim(c(0,1))+ geom_hline(yintercept = 0.5, colour = "black",lty = 3)+xlab("")+facet_grid(Pop~TriadType)+ scale_x_discrete(breaks=levels(full_data.means.triad$graph_meaning),
+                       labels=c("Same \nSense", "Diff. \nSense"))+guides(fill=FALSE)
 avg.plot2
+plot_grid(avg.plot, avg.plot2, labels = "AUTO",ncol = 1, align = 'v')
 ```
 
 Label * Meaning mixed effects model, followed by t-tests against chance for each condition.
@@ -404,6 +434,7 @@ kable(summary(glmer(Choice~LabelType + (1+LabelType|SubjNo) + (1|TriadType), dat
 kable(summary(glmer(Choice~LabelType + (1+LabelType|SubjNo) + (1|TriadType), data = subset(Child, Meaning != "Unambiguous (Same Kind)"), family = "binomial"))$coefficients, digits = 2)
                 
 summaryBy(Choice ~ SubjNo + WordType + LabelType, data = Child, keep.names = T) -> Child.Sum
+kable(summaryBy(Choice ~ WordType + LabelType, data = Child.Sum, FUN = c(mean,sd)) )
 t.test(subset(Child.Sum, WordType == "Non-Polysemous" & LabelType == "Same")$Choice, mu = 0.5)
 t.test(subset(Child.Sum, WordType == "Non-Polysemous" & LabelType == "Different")$Choice, mu = 0.5)
 t.test(subset(Child.Sum, WordType == "Polysemous" & LabelType == "Different")$Choice, mu = 0.5)
@@ -544,7 +575,7 @@ Adult.means$SE <- Adult.means$Choice.sd/sqrt(length(unique(Adult$ID))/2)
 avg.plot<- ggplot(Adult.means, aes(Meaning, Choice.mean, fill = Label_c)) + 
  stat_summary(fun.y="mean", geom="bar", position = "dodge")
 #add error bars
-avg.plot+geom_errorbar(aes(ymax=Adult.means$Choice.mean+Adult.means$SE, ymin=Adult.means$Choice.mean-Adult.means$SE), position=position_dodge(.9), width = 0)+theme_bw()+ylab("Proportion adults choosing related item")+ylim(c(0,1.01))+ geom_hline(yintercept = 0.5, colour = "black",lty = 3)+xlab("")+facet_grid(.~Expt)+ scale_x_discrete(breaks=levels(Adult.means$Meaning),
+avg.plot+geom_errorbar(aes(ymax=Adult.means$Choice.mean+Adult.means$SE, ymin=Adult.means$Choice.mean-Adult.means$SE), position=position_dodge(.9), width = 0)+theme_bw()+ylab("Proportion adults choosing dissimilar test picture")+ylim(c(0,1.01))+ geom_hline(yintercept = 0.5, colour = "black",lty = 3)+xlab("")+facet_grid(.~Expt)+ scale_x_discrete(breaks=levels(Adult.means$Meaning),
                       labels=c("Unambiguous", "Flexible"))
 ```
 And data analysis
@@ -565,7 +596,7 @@ Child.means$SE <- Child.means$Choice.sd/sqrt(length(unique(Child$ID))/2)
 avg.plot<- ggplot(Child.means, aes(Meaning, Choice.mean, fill = Label_c)) + 
  stat_summary(fun.y="mean", geom="bar", position = "dodge")
 #add error bars
-avg.plot+geom_errorbar(aes(ymax=Child.means$Choice.mean+Child.means$SE, ymin=Child.means$Choice.mean-Child.means$SE), position=position_dodge(.9), width = 0)+theme_bw()+ylab("Proportion children choosing related item")+ylim(c(0,1.01))+ geom_hline(yintercept = 0.5, colour = "black",lty = 3)+xlab("")+facet_grid(.~Expt)+ scale_x_discrete(breaks=levels(Child.means$Meaning),
+avg.plot+geom_errorbar(aes(ymax=Child.means$Choice.mean+Child.means$SE, ymin=Child.means$Choice.mean-Child.means$SE), position=position_dodge(.9), width = 0)+theme_bw()+ylab("Proportion children choosing dissimilar test picture")+ylim(c(0,1.01))+ geom_hline(yintercept = 0.5, colour = "black",lty = 3)+xlab("")+facet_grid(.~Expt)+ scale_x_discrete(breaks=levels(Child.means$Meaning),
                       labels=c("Unambiguous", "Flexible"))
 ```
 
@@ -583,7 +614,7 @@ Child.means$SE <- Child.means$Choice.sd/sqrt(length(unique(Child$ID))/2)
 avg.plot<- ggplot(Child.means, aes(Meaning, Choice.mean, fill = Label_c)) + 
  stat_summary(fun.y="mean", geom="bar", position = "dodge")
 #add error bars
-avg.plot+geom_errorbar(aes(ymax=Child.means$Choice.mean+Child.means$SE, ymin=Child.means$Choice.mean-Child.means$SE), position=position_dodge(.9), width = 0)+theme_bw()+ylab("Proportion children choosing related item")+ylim(c(0,1.01))+ geom_hline(yintercept = 0.5, colour = "black",lty = 3)+xlab("")+facet_grid(Age~Expt)+ scale_x_discrete(breaks=levels(Child.means$Meaning),
+avg.plot+geom_errorbar(aes(ymax=Child.means$Choice.mean+Child.means$SE, ymin=Child.means$Choice.mean-Child.means$SE), position=position_dodge(.9), width = 0)+theme_bw()+ylab("Proportion children choosing dissimilar test picture")+ylim(c(0,1.01))+ geom_hline(yintercept = 0.5, colour = "black",lty = 3)+xlab("")+facet_grid(Age~Expt)+ scale_x_discrete(breaks=levels(Child.means$Meaning),
                       labels=c("Unambiguous", "Flexible"))
 ```
 
