@@ -1,0 +1,37 @@
+CHILDES commands in folder Childes/ Eng-UK/
+freq +schicken */*/*.cha
+
+or for combos 
+combo +schicken^*^drumstick */*/*.cha
+
+
+GREP commands to process copied childes data
+
+for single words
+
+find ^(?!.*Total number of items \(tokens\).*).+$\r?\n
+replace
+
+find ^.*0.*\r?\n
+replace
+
+
+find [\n\r]+$
+replace
+
+find ^(    |   )
+replace
+
+
+for combos
+find ^(?!.*Matched.*).+$\r?\n
+replace
+
+find ^.*0.*\r?\n
+replace
+
+find [\n\r]+$
+replace
+
+find ^(    |   )
+replace

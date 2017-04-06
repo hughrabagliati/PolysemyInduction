@@ -62,12 +62,14 @@ If similarity ratio = 100 then shared label p(Y) = 1/(1+((0.1 \* 0.5)/0.005)) = 
 
 Adding a label still provides a 10%age point increase in p(Y) if the Y picture is `r 0.5/0.0064` times less similar to the target than the X picture. (code: 1/(1+((0.1\*0.5)/0.0064)) - 1/(1+((1\*0.5)/0.0064)) which produces a `r 100*round(1/(1+((0.1*0.5)/0.0064)) - 1/(1+((1*0.5)/0.0064)),2)` percentage point increase in probability of choosing Y.) 
 
-```{r slout_model}
-# 
+Finally, in the discussion section of the paper we note that we can estimate the relative similarity of pictures in the Different Sense condition by looking at the proportion of trials on which participants choose the Dissimilar Test picture in the No Label condition of Experiment 1. 
 
+* p(y) = 0.27 = 1/ (1+((1\*x)/1\*y))
+* 0.27 \* (1+((1\*x)/1\*y)) = 1
+* 0.27 \* (1+(ratio)) = 1
+* 1+(ratio) = 1/0.27
+* ratio = 1/0.27 - 1 = `r 1/0.27 -1`
 
-# 
-```
 
 ####Experiment 1
 This vs chicken experiment. We compare label (this chicken, this chicken) with no label (this one, this one).
