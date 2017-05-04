@@ -1,6 +1,5 @@
 ---
 title: "Triad Polysemy Induction Tasks"
-author: "Hugh Rabagliati"
 date: "5 July 2016"
 output: html_document
 ---
