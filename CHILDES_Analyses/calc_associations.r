@@ -1,39 +1,39 @@
-hen <- read.delim("hen", header = F, sep = " ")
-chicken <- read.delim("chicken", header = F, sep = " ")
-drumstick <- read.delim("drumstick", header = F, sep = " ")
+hen <- read.delim("./Processed/hen", header = F, sep = " ")
+chicken <- read.delim("./Processed/chicken", header = F, sep = " ")
+drumstick <- read.delim("./Processed/drumstick", header = F, sep = " ")
 
-horse  <- read.delim("horse", header = F, sep = " ")
-foal  <- read.delim("foal", header = F, sep = " ")
-rocker  <- read.delim("rocker", header = F, sep = " ")
+horse  <- read.delim("./Processed/horse", header = F, sep = " ")
+foal  <- read.delim("./Processed/foal", header = F, sep = " ")
+rocker  <- read.delim("./Processed/rocker", header = F, sep = " ")
 
-glass  <- read.delim("glass", header = F, sep = " ")
-cup  <- read.delim("cup", header = F, sep = " ")
-windowpane  <- read.delim("windowpane", header = F, sep = " ")
-window  <- read.delim("window", header = F, sep = " ")
+glass  <- read.delim("./Processed/glass", header = F, sep = " ")
+cup  <- read.delim("./Processed/cup", header = F, sep = " ")
+windowpane  <- read.delim("./Processed/windowpane", header = F, sep = " ")
+window  <- read.delim("./Processed/window", header = F, sep = " ")
 
-hen_chicken <- read.delim("hen_chicken", header = F, sep = " ")
-chicken_hen <- read.delim("chicken_hen", header = F, sep = " ")
-drumstick_chicken <- read.delim("drumstick_chicken", header = F, sep = " ")
-chicken_drumstick <- read.delim("chicken_drumstick", header = F, sep = " ")
-
-
-foal_horse <- read.delim("foal_horse", header = F, sep = " ")
-horse_foal <- read.delim("horse_foal", header = F, sep = " ")
-rocker_horse <- read.delim("rocker_horse", header = F, sep = " ")
-horse_rocker <- read.delim("horse_rocker", header = F, sep = " ")
+hen_chicken <- read.delim("./Processed/hen_chicken", header = F, sep = " ")
+chicken_hen <- read.delim("./Processed/chicken_hen", header = F, sep = " ")
+drumstick_chicken <- read.delim("./Processed/drumstick_chicken", header = F, sep = " ")
+chicken_drumstick <- read.delim("./Processed/chicken_drumstick", header = F, sep = " ")
 
 
-windowpane_glass <- read.delim("windowpane_glass", header = F, sep = " ")
-glass_windowpane <- read.delim("glass_windowpane", header = F, sep = " ")
-cup_glass <- read.delim("cup_glass", header = F, sep = " ")
-glass_cup <- read.delim("glass_cup", header = F, sep = " ")
+foal_horse <- read.delim("./Processed/foal_horse", header = F, sep = " ")
+horse_foal <- read.delim("./Processed/horse_foal", header = F, sep = " ")
+rocker_horse <- read.delim("./Processed/rocker_horse", header = F, sep = " ")
+horse_rocker <- read.delim("./Processed/horse_rocker", header = F, sep = " ")
 
-window_glass <- read.delim("window_glass", header = F, sep = " ")
-glass_window <- read.delim("glass_window", header = F, sep = " ")
+
+windowpane_glass <- read.delim("./Processed/windowpane_glass", header = F, sep = " ")
+glass_windowpane <- read.delim("./Processed/glass_windowpane", header = F, sep = " ")
+cup_glass <- read.delim("./Processed/cup_glass", header = F, sep = " ")
+glass_cup <- read.delim("./Processed/glass_cup", header = F, sep = " ")
+
+window_glass <- read.delim("./Processed/window_glass", header = F, sep = " ")
+glass_window <- read.delim("./Processed/glass_window", header = F, sep = " ")
 
 summary(hen)
 summary(chicken)
-summary(drumsticks)
+summary(drumstick)
 summary(horse)
 summary(foal)
 summary(rocker)
@@ -59,7 +59,7 @@ summary(glass_window)
 # chicken - hen/drumstick associations
 chicken_assoc_hen <- sum(c(chicken_hen$V3, hen_chicken$V3)) / 
                                 (sum(c(chicken$V1, hen$V1)) - sum(c(chicken_hen$V3, hen_chicken$V3)))
-print(paste("glass_assoc_windowpane = ",chicken_assoc_hen))
+print(paste("chicken_assoc_hen = ",chicken_assoc_hen))
 
 chicken_assoc_drumstick <- sum(c(chicken_drumstick$V3, drumstick_chicken$V3)) / 
   (sum(c(chicken$V1, drumstick$V1)) - sum(c(chicken_drumstick$V3, drumstick_chicken$V3)))
@@ -94,4 +94,4 @@ print("mean Different Sense")
 mean(c(glass_assoc_cup, horse_assoc_rocker,chicken_assoc_drumstick))
 
 print("mean Same Sense")
-mean(c(glass_assoc_windowpane,glass_assoc_windowpane,horse_assoc_foal))
+mean(c(glass_assoc_windowpane,chicken_assoc_hen,horse_assoc_foal))

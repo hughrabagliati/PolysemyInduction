@@ -70,6 +70,10 @@ Finally, in the discussion section of the paper we note that we can estimate the
 * 1+(ratio) = 1/0.27
 * ratio = 1/0.27 - 1 = `r 1/0.27 -1`
 
+We can use this value to calculate what the predicted effect of shared label should be in this case. 
+
+If the Y picture is `r round(0.5/0.1851,2)` times less similar to the target than the X picture. (code: 1/(1+((0.1\*0.5)/0.1851)) - 1/(1+((1\*0.5)/0.1851)) then adding a shared label produces a `r 100*round(1/(1+((0.1*0.5)/0.1851)) - 1/(1+((1*0.5)/0.1851)),2)` percentage point increase in probability of choosing Y, from `r round(1/(1+((1*0.5)/0.1851)),2)` to `r round(1/(1+((0.1*0.5)/0.1851)),2)`.
+
 
 ####Experiment 1
 This vs chicken experiment. We compare label (this chicken, this chicken) with no label (this one, this one).
