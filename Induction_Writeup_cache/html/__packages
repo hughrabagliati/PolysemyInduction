@@ -27,3 +27,5 @@ Formula
 Hmisc
 tidyr
 cowplot
+coda
+BayesFactor

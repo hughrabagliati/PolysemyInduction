@@ -360,6 +360,11 @@ t.test(subset(Adult.Sum, WordType == "Non-Polysemous" & LabelType == "Different"
 t.test(subset(Adult.Sum, WordType == "Polysemous" & LabelType == "Different")$Choice, mu = 0.5)
 t.test(subset(Adult.Sum, WordType == "Polysemous" & LabelType == "Same")$Choice, mu = 0.5)
 
+
+library(BayesFactor)
+
+ttestBF(subset(Adult.Sum, WordType == "Polysemous" & LabelType == "Same")$Choice,subset(Adult.Sum, WordType == "Polysemous" & LabelType == "Different")$Choice, paired = T)
+
 ```
 
 ### Children
@@ -371,6 +376,11 @@ print(paste("Ambig 3 yrs", length(unique(subset(Child, Age == "3" & Meaning != "
 print(paste("Ambig 4 yrs", length(unique(subset(Child, Age == "4" & Meaning != "Unambiguous (Same Kind)")$SubjNo))))
 print(paste("3 yrs girls = ", length(unique(subset(Child, Age == "3" & gender == "F")$SubjNo))))
 print(paste("4 yrs girls = ", length(unique(subset(Child, Age == "4" & gender == "F")$SubjNo))))
+
+print(paste("Tested in Edinb = ", length(unique(subset(Child,  Loc != "Ber")$SubjNo))))
+
+print(paste("Tested in Berkeley = ", length(unique(subset(Child,  Loc == "Ber")$SubjNo))))
+
 Child$Age.Months <- as.numeric(Child$Age.Months)
 child.descripts <- summaryBy(Age.Months ~ Age+SubjNo, data = Child, keep.names = T)
 print(summaryBy(Age.Months ~ Age, data = child.descripts, FUN = c(mean,range)))
@@ -444,6 +454,10 @@ t.test(subset(Child.Sum, WordType == "Non-Polysemous" & LabelType == "Same")$Cho
 t.test(subset(Child.Sum, WordType == "Non-Polysemous" & LabelType == "Different")$Choice, mu = 0.5)
 t.test(subset(Child.Sum, WordType == "Polysemous" & LabelType == "Different")$Choice, mu = 0.5)
 t.test(subset(Child.Sum, WordType == "Polysemous" & LabelType == "Same")$Choice, mu = 0.5)
+
+library(BayesFactor)
+
+ttestBF(subset(Child.Sum, WordType == "Polysemous" & LabelType == "Same")$Choice,subset(Child.Sum, WordType == "Polysemous" & LabelType == "Different")$Choice, paired = T)
 
 ```
 
